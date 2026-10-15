@@ -1,0 +1,63 @@
+name: WbLab
+
+services:
+  web:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:80"
+      - "${LAN_PORT:-8092}:8081"
+    environment:
+      WEB_PORT: ${WEB_PORT:-8090}
+      LAN_PORT: ${LAN_PORT:-8092}
+      PHPMYADMIN_PORT: ${PHPMYADMIN_PORT:-8091}
+      DB_PORT: ${DB_PORT:-3310}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./hosting:/var/www/html:ro
+      - ./sites:/var/www/sites
+      - lan_state_data:/var/www/runtime
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-change-me}
+      MARIADB_ROOT_HOST: "%"
+      TZ: ${TZ:-UTC}
+    ports:
+      - "127.0.0.1:${DB_PORT:-3310}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  phpmyadmin:
+    image: phpmyadmin:5-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PHPMYADMIN_PORT:-8091}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: ${PMA_UPLOAD_LIMIT:-256M}
+      MEMORY_LIMIT: 512M
+      MAX_EXECUTION_TIME: 600
+      TZ: ${TZ:-UTC}
+
+volumes:
+  db_data:
+  lan_state_data:

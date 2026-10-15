@@ -1,0 +1,17 @@
+# Local environment settings and secrets
+.env
+.env.*
+!.env.example
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Keep user websites out of Git, except for the tracked example project
+/sites/*
+!/sites/example/
+!/sites/example/**
